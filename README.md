@@ -41,7 +41,7 @@ All of it is traced with OpenTelemetry into Arize Phoenix (port 6006).
 - **Structured outputs** (`multimodal_moderation/types/moderation_result.py`): a base `ModerationResult` with only `rationale`, plus one subclass per modality whose flags are required `bool` fields.
 - **Moderation agents** (`multimodal_moderation/agents/`): each is a Pydantic AI `Agent` with its own instructions and output type. Image, video and audio are sent to Gemini as `BinaryContent`.
 - **Chat UI** (`gradio_app.py`): a multimodal `gr.ChatInterface`. The Pydantic AI message history is kept in `gr.State` so the customer stays consistent across turns.
-- **Tracing**: a `conversation` span (with `session.id`) contains one `chat_turn` span per turn. Each turn has `moderate_text` / `moderate_<media>` child spans and an `llm_customer` span. Flagged turns get a `feedback` attribute.
+- **Tracing**: all spans use the tracer from `tracing.py`. A `conversation` span (with `session.id`) stays open for the whole chat and contains one `chat_turn` span per turn (with `session.id` and the input). Each turn has `moderate_text` / `moderate_<media>` child spans (moderation input and output). When content is flagged, a `feedback` child span is created under `chat_turn` with the `feedback` text and `session.id`; otherwise an `llm_customer` span records the Gemini call.
 
 ## Setup
 

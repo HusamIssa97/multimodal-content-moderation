@@ -213,6 +213,17 @@ class ChatSessionWithTracing:
             attributes={"session.id": self.session_id},
         )
 
+    def _record_feedback(self, feedback: str) -> None:
+        """
+        Record moderation feedback in its own "feedback" span.
+
+        Called while chat_turn is the active span, so the feedback span appears
+        as its child in Phoenix.
+        """
+        with tracer.start_as_current_span("feedback") as feedback_span:
+            feedback_span.set_attribute("feedback", feedback)
+            feedback_span.set_attribute("session.id", self.session_id)
+
     async def chat_with_gemini(self, message: dict, history: List, past_messages: List) -> Tuple[str, List, str]:
         """
         Process a chat turn: moderate content, then send to AI customer.
@@ -269,7 +280,7 @@ class ChatSessionWithTracing:
                         feedback = f"⚠️ Content flagged: {safety_message}"
                         response = "[This content was flagged by moderation and not sent to the AI. Please try again.]"
 
-                        span.set_attribute("feedback", feedback)
+                        self._record_feedback(feedback)
 
                         return response, past_messages, feedback
 
@@ -293,7 +304,7 @@ class ChatSessionWithTracing:
                                     "[This content was flagged by moderation and not sent to the AI. Please try again.]"
                                 )
 
-                                span.set_attribute("feedback", feedback)
+                                self._record_feedback(feedback)
 
                                 return response, past_messages, feedback
 
